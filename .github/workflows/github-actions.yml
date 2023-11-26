@@ -15,7 +15,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: Lint YAML files
+      
+      - name: Install yamllint
         run: |
-          yamllint ./*.yml
+          pip install yamllint
+
+      - name: Lint YAML files recursively
+        run: |
+          find . -type f -name '*.yaml' -o -name '*.yml' -exec yamllint {} +
