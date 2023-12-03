@@ -6,7 +6,7 @@ metadata:
     app: giropops-senhas
 spec:
   selector:
-    matchLabels: 
+    matchLabels:
       app: giropops-senhas
   endpoints:
     - interval: 30s

@@ -7,8 +7,8 @@ metadata:
     cert-manager.io/issuer: "letsencrypt-staging"
 spec:
   ingressClassName: nginx
-  tls: 
-  - hosts: 
+  tls:
+  - hosts:
     - projeto-pick.ibmenezes.com
     secretName: "projeto-pick2-tls"
   rules:

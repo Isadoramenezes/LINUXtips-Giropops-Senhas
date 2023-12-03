@@ -7,8 +7,8 @@ metadata:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
-  tls: 
-  - hosts: 
+  tls:
+  - hosts:
     - giropops-senhas.ibmenezes.com
     secretName: "giropops-senhas-tls"
   rules:
@@ -22,4 +22,3 @@ spec:
             name: giropops-senhas
             port:
               number: 5000
- 

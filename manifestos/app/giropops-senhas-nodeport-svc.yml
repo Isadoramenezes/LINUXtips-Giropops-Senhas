@@ -11,7 +11,4 @@ spec:
   - port: 5000
     name: giropops-port
     targetPort: 5000
-  externalIPs:
-    - 3.94.130.71
-    - 3.234.182.15
   type: NodePort
