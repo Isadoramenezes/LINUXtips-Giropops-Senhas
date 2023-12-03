@@ -10,7 +10,7 @@ spec:
   tls: 
   - hosts: 
     - projeto-pick.ibmenezes.com
-    secretName: "projeto-pick-tls"
+    secretName: "projeto-pick2-tls"
   rules:
   - host: projeto-pick.ibmenezes.com
     http:

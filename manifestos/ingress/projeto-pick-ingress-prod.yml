@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls: 
   - hosts: 
-    - projeto-pick.ibmenezes.com
-    secretName: "projeto-pick-tls"
+    - giropops-senhas.ibmenezes.com
+    secretName: "giropops-senhas-tls"
   rules:
-  - host: projeto-pick.ibmenezes.com
+  - host: giropops-senhas.ibmenezes.com
     http:
       paths:
       - path: /
@@ -22,26 +22,4 @@ spec:
             name: giropops-senhas
             port:
               number: 5000
-      - path: /login
-        pathType: Prefix
-        backend:
-          service:
-            name: grafana-svc-bridge
-            port:
-              number: 3000
-      - path: /prometheus-operator
-        pathType: Prefix
-        backend:
-          service:
-            name: prometheus-operator-svc-bridge
-            port:
-              number: 8443
-      - path: /alertmanager-main
-        pathType: Prefix
-        backend:
-          service:
-            name: alertmanager-main-svc-bridge
-            port:
-              number: 9093
-
  
