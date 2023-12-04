@@ -65,8 +65,10 @@ Total: 0 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
 
 
 ## Como instalar o docker scout CLI
+<details>
+<summary>Resultados do docker scout contra a versão 3.0</summary>
+<br>
 
-## Resultados do docker scout contra a versão 3.0
 ```
 ➜  LINUXtips-giropops-senhas git:(feature/dockerfile) docker scout cves isadora/linuxtips-giropops-senhas:3.0
     ...Storing image for indexing
@@ -86,7 +88,7 @@ Total: 0 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
     size            │ 25 MB
     packages        │ 39
 ```
-
+</details>
 
 ## Primeiro teste de performance
 
