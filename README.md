@@ -1,9 +1,59 @@
 # LinuxTIPS- Giropops Senhas
 
-## Descrição
+### Descrição
+Esse repositório agrupa os arquivos de deploy da aplicação Giropops Senhas num cluter Kubernetes como parte da avaliação do Programa Intensivo de Containers e Kubernetes da @LinuxTips.
+
+### A Aplicação
+
+A aplicação Giropops Senhas é uma API escrita em Flask que, conectada a um Redis, gera e armazena strings aleatórias de acordo com as especificações de número de caracteres, caracteres especiais e números passadas pelo usuário.
+
+## Configuração
+### Construção da Imagem Giropops-Senhas e pipeline
+
+A imagem da aplicação foi construída pensando nas melhores práticas em containers. 
+
+A primeira coisa é que a imagem é _distroless_. Isso significa que a imagem contém unicamente os componentes necessários para sua execução, o que não apenas reduz o tamanho da imagem (diminuindo custos), mas também aumenta a segurança (pela diminuição das opções de ataque). No caso deste projeto a imagem base é da [Chainguard](https://edu.chainguard.dev/chainguard/chainguard-images/reference/python/). 
+
+A segunda prática utilizada foi a utilização de _multi-stage build_. Essa prática permite que a imagem final seja mais limpa e segura também. Nesse projeto, toda a instalação de dependências da imagem é feita usando como base a imagem `cgr.dev/chainguard/python:latest-dev` que permite mais flexibilidade no download e instalação. Após todos os requisitos instalados, a única pasta necessária é `/home/nonroot/.local/lib/python3.12/site-packages`, que é copiada para a imagem final, onde a aplicação será montada para ser executada.
+
+Além dessas práticas, a imagem foi assinada e passou por verificação de vulnerabilidades do Trivy e do docker scout. Os resultados de cada uma dessas etapas pode ser verificado na seção de resultados deste documento. Essas etapas também foram automatizadas, e o pipeline de build da imagem pode ser verificado abaixo:
+
+![github-actions-pipeline](./static/github-actions.png)
+
+A cada push para branches com prefixo 'feature/' ou para a branch main, esse pipeline executará:
+
+1. O lint para todos os arquivos yaml/yml no repositório;
+2. O build da imagem baseado no Dockerfile e a publicação no docker hub (é importante notar que algumas configuraçãos de segredos no repositório são necessárias);
+3. A assinatura, usando cosign, da imagem publicada;
+4. O scan de vulnerabilidades utilizando o trivy, da aqua security.
+
+[!WARNING]  
+Note que neste estágio (v1.0.0), a imagem não é automaticamente deployada no cluster kubernetes. Seu deploy depende da atualização manual dos arquivos de configuração que serão discutidos abaixo.
+
+### Configuração do Cluster Kubernetes
+
+### Especificações
+
+Esse projeto foi executado e validado usando o serviço EKS da AWS. Validações em cluster do tipo Kind ou bare metal serão realizadas.
+
+Atualmente a especificação é:
+
+Para o cluster:
+
+- 2 Workers t3.medium
+- 1 Control Plane gerenciado pela AWS
+
+Para build automatizado da aplicação:
+
+- Conta no dockerhub
+- Repositório no github com acesso ao GitHub Actions
 
 
-## Requisitos
+Para builds locais:
+
+- Docker CLI
+
+
 
 
 ## Resultados
