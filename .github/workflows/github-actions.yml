@@ -6,7 +6,6 @@ on:
     branches:
       - feature/*
       - main
-
 jobs:
   lint-yaml:
     runs-on: ubuntu-latest
