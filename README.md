@@ -1,4 +1,4 @@
-# LinuxTIPS- Giropops Senhas
+# LINUXTips - Giropops Senhas
 
 ### Descrição
 Esse repositório agrupa os arquivos de deploy da aplicação Giropops Senhas num cluter Kubernetes como parte da avaliação do Programa Intensivo de Containers e Kubernetes da @LinuxTips.
@@ -16,7 +16,7 @@ A primeira coisa é que a imagem é _distroless_. Isso significa que a imagem co
 
 A segunda prática utilizada foi a utilização de _multi-stage build_. Essa prática permite que a imagem final seja mais limpa e segura também. Nesse projeto, toda a instalação de dependências da imagem é feita usando como base a imagem `cgr.dev/chainguard/python:latest-dev` que permite mais flexibilidade no download e instalação. Após todos os requisitos instalados, a única pasta necessária é `/home/nonroot/.local/lib/python3.12/site-packages`, que é copiada para a imagem final, onde a aplicação será montada para ser executada.
 
-Além dessas práticas, a imagem foi assinada e passou por verificação de vulnerabilidades do Trivy e do docker scout. Os resultados de cada uma dessas etapas pode ser verificado na seção de resultados deste documento. Essas etapas também foram automatizadas, e o pipeline de build da imagem pode ser verificado abaixo:
+Além dessas práticas, a imagem foi assinada e passou por verificação de vulnerabilidades do Trivy e do docker scout. Os resultados de cada uma dessas etapas pode ser verificado na seção de [resultados](#resultados) deste documento. Essas etapas também foram automatizadas, e o pipeline de build da imagem pode ser verificado abaixo:
 
 ![github-actions-pipeline](./static/github-actions.png)
 
@@ -27,12 +27,15 @@ A cada push para branches com prefixo 'feature/' ou para a branch main, esse pip
 3. A assinatura, usando cosign, da imagem publicada;
 4. O scan de vulnerabilidades utilizando o trivy, da aqua security.
 
-[!WARNING]  
+### :warning: Aviso
 Note que neste estágio (v1.0.0), a imagem não é automaticamente deployada no cluster kubernetes. Seu deploy depende da atualização manual dos arquivos de configuração que serão discutidos abaixo.
 
 ### Configuração do Cluster Kubernetes
 
-### Especificações
+
+<details>
+  <summary>Especificações</summary>
+  <br>
 
 Esse projeto foi executado e validado usando o serviço EKS da AWS. Validações em cluster do tipo Kind ou bare metal serão realizadas.
 
@@ -48,18 +51,101 @@ Para build automatizado da aplicação:
 - Conta no dockerhub
 - Repositório no github com acesso ao GitHub Actions
 
-
 Para builds locais:
 
 - Docker CLI
 
+</details>
+
+<details>
+<summary>Visão geral</summary>
+<br>
+Os componentes da configuração podem ser visualizados em alto nível na imagem abaixo. O passo a passo de como instalar e configurar cada componente pode ser verificado no item [Execução](#execução):
+
+![high-level-overview](./static/high_level_overview.png)
+</details>
+
+<details>
+<summary>Deploy e Serviço da aplicação</summary>
+<br>
+Os manifestos de deployment e criação de serviço do giropops-senhas e do redis podem ser encontrados em manifestos/app/.
+
+O destaque do deploy do giropops senhas temos:
+- Variável de ambiente REDIS_HOST apontando para o serviço do redis;
+- LivenessProbe, executando requisições GET em `/` para validar que o serviço está ativo;
+- Limitação e requisição de recursos de CPU e Memória.
+
+Os dois serviços são expostos dentro do cluster com serviços do tipo `ClusterIP` e, para o giropops-senhas, também há um serviço do tipo `NodePort` para troubleshooting.
+</details>
+
+<details>
+<summary>Exposição do serviço</summary>
+<br>
+
+Nesta configuração o serviço está exposto externamente através do Nginx Ingress Controler. Ele atua como um controlador de balanceamento de carga e roteamento, permitindo redirecionamentos e o uso de certificados SSL/TLS em conjunto com o [CertManager](https://cert-manager.io/) e o [Let's Encrypt](https://letsencrypt.org/).
+
+Em manifestos/ingress/ estão os arquivos de configuração do ingress para o ambiente de staging (com certificado não assinado) e para ambiente produtivo (com certificado assinado pelo let's encrypt). Os issuers para cada um desses cenários podem criados com base nos arquivos em letsencrypt/.
+
+</details>
+
+<details>
+<summary>Monitoria</summary>
+<br>
+A monitoração do clusters está sendo feita utilizando o Prometheus Operator. Por padrão a instalação conta com o Prometheus, o Grafana e o AlertManager.
+
+No Prometheus foram criadas duas regras, para o case do número de pods ativos ser 0, e para o caso do número de senhas geradas supere certo threshold (essa regra foi mais para disparar os alertas).
+
+![prometheus_rules](./static/prometheus_rules.png)
+
+Além disso, um service monitor foi criado para a monitoração de métricas do serviço e um pod monitor foi criado para monitoração de métricas do Pod. Todos esses arquivos de configuração podem ser encontrados em manifestos/monitoria/.
 
 
+![prometheus_pod_monitor](./static/prometheus_pod_monitor.png)
+
+![prometheus_service_monitor](./static/prometheus_service_monitor.png)
+
+Uma vez que as métricas do serviço estavam sendo ingeridas pelo Prometheus, um painel de monitoria foi criado no Grafana.
+![grafana_queries](./static/grafana_queries.png)
+
+Foram criadas visualizações para:
+
+1. Uso de memória
+![grafana_memory_usage](./static/grafana_memory_usage.png)
+
+2. Status do Serviço
+![grafana_service_status](./static/grafana_service_status.png)
+
+3. Número de Senhas geradas
+![grafana_senhas_geradas](./static/grafana_senhas_geradas.png)
+
+4. Número de Pods ativos
+![grafana_pods_counter](./static/grafana_pods_counter.png)
+
+</details>
+
+
+<details>
+<summary>Performance</summary>
+<br>
+
+Para assegurar que a aplicação pode lidar com grandes workloads, foi também configurado um HPA - Horizontal Pod Autoscaler. Ele monitora a utilização de recursos e escala automaticamente (para mais e para menos) o número de pods em execução. No caso deste projeto o HPA está configurado para de CPU e Memória em 50 e 70% respectivamente. A configuração pode ser encontrada em manifestos/performance.
+
+</details>
 
 ## Resultados
 
+### Testes de Vulnerabilidades
 
-## Resultados do Scan do trivy contra a versão 2.0
+Os testes de vulnerabilidade da imagem foram feitos utilizando o Trivy e o Docker Scout. As duas ferramentas servem ao mesmo propósito aqui: Analisar os pacotes presentes em na imagem em busca de vulnerabilidades. Para esse projeto o docker scout foi executado localmente e o trivy está integrado ao pipeline.
+
+
+
+<details>
+<summary>Resultados do Scan do trivy contra a versão 2.0</summary>
+<br>
+
+Com os pacotes padrões da aplicação giropops-senhas disponívels na aplicação original foram identificadas três vulnerabilidades. Todas elas já possuem correções.
+
 ```
 ➜  app git:(feature/dockerfile) ✗ sudo trivy image isadora/linuxtips-giropops-senhas:2.0
 2023-11-26T10:30:50.893Z        INFO    Vulnerability scanning is enabled
@@ -95,8 +181,14 @@ Total: 3 (UNKNOWN: 0, LOW: 1, MEDIUM: 1, HIGH: 1, CRITICAL: 0)
 │                  │                │          │        │                   │                     │ https://avd.aquasec.com/nvd/cve-2023-28858                 │
 └──────────────────┴────────────────┴──────────┴────────┴───────────────────┴─────────────────────┴────────────────────────────────────────────────────────────┘
 ```
+</details>
 
-## Resultados do Scan do trivy contra a versão 3.0
+<details>
+<summary>Resultados do Scan do trivy contra a versão 3.0</summary>
+<br>
+
+Uma vez que os pacotes foram atualizados para as versões com correções, nenhuma vulnerabilidade conhecida está presente na imagem giropops-senhas.
+
 ```
 ➜  app git:(feature/dockerfile) ✗ sudo trivy image isadora/linuxtips-giropops-senhas:3.0
 2023-11-26T10:33:48.789Z        INFO    Vulnerability scanning is enabled
@@ -112,15 +204,16 @@ isadora/linuxtips-giropops-senhas:3.0 (wolfi 20230201)
 
 Total: 0 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
 ```
+</details>
 
-
-## Como instalar o docker scout CLI
 <details>
 <summary>Resultados do docker scout contra a versão 3.0</summary>
 <br>
 
+De forma similar ao Trivy, o docker scout não identificou nenhuma vulnerabilidade na versão 3.0.
+
 ```
-➜  LINUXtips-giropops-senhas git:(feature/dockerfile) docker scout cves isadora/linuxtips-giropops-senhas:3.0
+➜  LINUXtips-giropops-senhas git:(feature/dockerfile) docker scout CVEs isadora/linuxtips-giropops-senhas:3.0
     ...Storing image for indexing
     ✓ Image stored for indexing
     ...Indexing
@@ -140,7 +233,32 @@ Total: 0 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0)
 ```
 </details>
 
-## Primeiro teste de performance
+
+### Testes de Performance
+
+Os testes de performance foram feitos utilizando o [K6](https://k6.io/). A configuração do teste pode ser encontrada em manifestos/performance/performance-testes. 
+A carga sobre o serviço obedeceu a seguinte distribuição para todos os testes:
+
+```
+duration: "10s" -> target: 20 
+duration: "10s" -> target: 100 
+duration: "20s" -> target: 300 
+duration: "20s" -> target: 400 
+duration: "20s" -> target: 600 
+duration: "20s" -> target: 800 
+duration: "60s" -> target: 1000 
+duration: "10s" -> target: 500 
+duration: "10s" -> target: 250 
+duration: "10s" -> target: 20 
+```
+
+Onde `duration` é o intervalo de tempo e `target` é o número de requisições nesse intervalo. Em média foram lançadas 159000 requisições sobre o serviço em cada teste.
+
+<details>
+<summary>Resultados do primeiro teste de performance usando o K6</summary>
+<br>
+
+No primeiro teste o npumero de requisições foi 149581, com 498 perdidas. Nesse momento o HPA tinha um problema de configuração e não foi capaz de escalar o deployment do giropops-senhas.
 
 ```
      ✗ response code was 200
@@ -170,8 +288,15 @@ breaking ✓ [======================================] 0000/1000 VUs  3m10s
 ERRO[0213] thresholds on metrics 'http_req_duration' have been crossed
 
 ```
+</details>
 
-## Resultado do segundo teste de performance apos configura;'ao do HPA:
+
+<details>
+<summary>Resultado do segundo teste de performance usando o K6 após configuração do HPA</summary>
+<br>
+
+No segundo teste o npumero de requisições foi 158545 , com 29 perdidas. Nesse momento o HPA foi corrigido o número de pods disponíveis foi 5.
+
 ```
      ✗ response code was 200
       ↳  99% — ✓ 158545 / ✗ 29
@@ -194,8 +319,15 @@ ERRO[0213] thresholds on metrics 'http_req_duration' have been crossed
      vus............................: 25     min=2        max=999
      vus_max........................: 1000   min=1000     max=1000
 ```
+</details>
 
-## Resultado no terceiro teste, sem considerar latencia:
+
+<details>
+<summary>Resultado no terceiro teste, sem considerar latencia</summary>
+<br>
+
+No segundo teste o npumero de requisições foi 160502, com 15 perdidas. O HPA não reduziu o número de pods durante essa execução e apenas 0,0000000934% das requisições foram perdidas.
+
 ```
 
      checks.........................: 99.99% ✓ 160502     ✗ 15
@@ -222,7 +354,14 @@ breaking ✓ [======================================] 0000/1000 VUs  3m10s
 
 ```
 
-### Evento de scale UP no HPA:
+</details>
+
+
+<details>
+<summary>Evento de scale UP no HPA</summary>
+<br>
+
+```
 ➜  manifestos git:(feature/performance-testes) ✗ k describe hpa giropops-senhas-deployment-hpa
 Name:                                                     giropops-senhas-deployment-hpa
 Namespace:                                                default
@@ -246,14 +385,19 @@ Events:
   Type    Reason             Age   From                       Message
   ----    ------             ----  ----                       -------
   Normal  SuccessfulRescale  15m   horizontal-pod-autoscaler  New size: 5; reason: cpu resource utilization (percentage of request) above target
+```
+</details>
 
+
+## Execução
 
 1. Crie um cluster EKS
+
 ```bash 
 eksctl create cluster --name=eks-cluster-pick --version=1.23 --region=us-east-1 --nodegroup-name=eks-cluster-pick-nodegroup --node-type=t3.medium --nodes=2 --nodes-min=1 --nodes-max=3 --managed
 ```
 
-2. Crie os serviços e deploymentsÇ
+2. Crie os serviços e deployments:
 ```bash
 ➜  k apply -f app/giropops-senhas-deploy.yml
 deployment.apps/giropops-senhas created
