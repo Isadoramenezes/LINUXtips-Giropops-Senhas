@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - projeto-pick.ibmenezes.com
-    secretName: "projeto-pick2-tls"
+    - aula-pick.ibmenezes.com
+    secretName: "aula-pick-tls"
   rules:
-  - host: projeto-pick.ibmenezes.com
+  - host: aula-pick.ibmenezes.com
     http:
       paths:
       - path: /

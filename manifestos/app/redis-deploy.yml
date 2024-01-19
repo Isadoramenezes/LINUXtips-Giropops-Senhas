@@ -26,10 +26,10 @@ spec:
           requests:
             memory: "128Mi"
             cpu: "250m"
-#        volumeMounts:
-#           - mountPath: "/data"
-#           name: redis-persistent-storage
-#      volumes:
-#        - name: redis-persistent-storage
-#          persistentVolumeClaim:
-#            claimName: redis-pvc
+        volumeMounts:
+        - mountPath: "/data"
+          name: redis-persistent-storage
+      volumes:
+        - name: redis-persistent-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
