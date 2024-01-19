@@ -15,7 +15,7 @@ spec:
         app: giropops-senhas
     spec:
       containers:
-      - image: isadora/linuxtips-giropops-senhas:3.0
+      - image: isadora/linuxtips-giropops-senhas:IMAGETAG
         name: giropops-senhas
         env:
         - name: REDIS_HOST
