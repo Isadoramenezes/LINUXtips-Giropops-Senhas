@@ -1,3 +1,4 @@
 *.key
 *.crt
 trust-policy.json
+manifestos/admin/*
